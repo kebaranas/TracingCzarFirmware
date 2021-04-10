@@ -7,9 +7,9 @@
 #include <BLE2902.h>
 
 // Identify the service as a health thermometer.
-#define SERVICE_UUID BLEUUID((uint16_t) 0x1809)
+#define HEALTH_THERMOMETER_SERVICE_UUID BLEUUID((uint16_t) 0x1809)
 // Identify the characteristic as a temperature measurement.
-#define CHARACTERISTIC_UUID BLEUUID((uint16_t) 0x2A1C)
+#define TEMPERATURE_MEASUREMENT_CHARACTERISTIC_UUID BLEUUID((uint16_t) 0x2A1C)
 
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 BLEServer *server;
@@ -22,18 +22,24 @@ void setup() {
   // Initiate contactless IR thermometer.
   mlx.begin();
   // Initiate Bluetooth low energy.
+  BLEDevice::init("TracingCzar-Proto");;
   server = BLEDevice::createServer();
-  tempService = server->createService(SERVICE_UUID);
-  tempService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_INDICATE);
+  tempService = server->createService(HEALTH_THERMOMETER_SERVICE_UUID);
+  objTempCelChar = tempService->createCharacteristic(TEMPERATURE_MEASUREMENT_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
   tempService->start();
+  
   BLEAdvertising *advertising = BLEDevice::getAdvertising();
-  advertising->addServiceUUID(SERVICE_UUID);
+  advertising->addServiceUUID(HEALTH_THERMOMETER_SERVICE_UUID);
   advertising->setScanResponse(true);
   // advertising->setMinPreferred(0x06); // iOS
   advertising->setMinPreferred(0x12); // Android
+  // Start advertising.
   BLEDevice::startAdvertising();
 }
 
 void loop() {
-
+  double temp = mlx.readObjectTempC();
+  objTempCelChar->setValue(temp);
+  objTempCelChar->notify();
+  delay(1000);
 }
